@@ -1,0 +1,195 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+class SafeBrowsingService {
+  // ⚠️ IMPORTANT: Replace with your actual Google Safe Browsing API key
+  // Get your key from: https://console.cloud.google.com/apis/credentials
+  static const String _apiKey = 'YOUR_SAFE_BROWSING_API_KEY_HERE';
+  static const String _baseUrl = 'https://safebrowsing.googleapis.com/v4/threatMatches:find';
+
+  // Check if URL is safe using Google Safe Browsing API
+  static Future<Map<String, dynamic>> checkUrlSafety(String url) async {
+    try {
+      final requestBody = {
+        'client': {
+          'clientId': 'parental-control-app',
+          'clientVersion': '1.0.0'
+        },
+        'threatInfo': {
+          'threatTypes': [
+            'MALWARE',
+            'SOCIAL_ENGINEERING',
+            'UNWANTED_SOFTWARE',
+            'POTENTIALLY_HARMFUL_APPLICATION'
+          ],
+          'platformTypes': ['ANY_PLATFORM'],
+          'threatEntryTypes': ['URL'],
+          'threatEntries': [
+            {'url': url}
+          ]
+        }
+      };
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl?key=$_apiKey'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        if (data['matches'] != null && data['matches'].isNotEmpty) {
+          // URL is unsafe
+          return {
+            'isSafe': false,
+            'threatType': data['matches'][0]['threatType'],
+            'platformType': data['matches'][0]['platformType'],
+            'threatEntryType': data['matches'][0]['threatEntryType'],
+            'confidence': data['matches'][0]['confidence'],
+            'metadata': data['matches'][0]['metadata'],
+          };
+        } else {
+          // URL is safe
+          return {
+            'isSafe': true,
+            'threatType': null,
+            'platformType': null,
+            'threatEntryType': null,
+            'confidence': null,
+            'metadata': null,
+          };
+        }
+      } else {
+        print('❌ Safe Browsing API error: ${response.statusCode}');
+        return {
+          'isSafe': true, // Default to safe if API fails
+          'error': 'API request failed: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      print('❌ Safe Browsing API exception: $e');
+      return {
+        'isSafe': true, // Default to safe if exception occurs
+        'error': 'Exception: $e',
+      };
+    }
+  }
+
+  // Check multiple URLs at once
+  static Future<List<Map<String, dynamic>>> checkMultipleUrls(List<String> urls) async {
+    try {
+      final requestBody = {
+        'client': {
+          'clientId': 'parental-control-app',
+          'clientVersion': '1.0.0'
+        },
+        'threatInfo': {
+          'threatTypes': [
+            'MALWARE',
+            'SOCIAL_ENGINEERING',
+            'UNWANTED_SOFTWARE',
+            'POTENTIALLY_HARMFUL_APPLICATION'
+          ],
+          'platformTypes': ['ANY_PLATFORM'],
+          'threatEntryTypes': ['URL'],
+          'threatEntries': urls.map((url) => {'url': url}).toList()
+        }
+      };
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl?key=$_apiKey'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final results = <Map<String, dynamic>>[];
+        
+        if (data['matches'] != null && data['matches'].isNotEmpty) {
+          for (final match in data['matches']) {
+            results.add({
+              'url': match['threat']['url'],
+              'isSafe': false,
+              'threatType': match['threatType'],
+              'platformType': match['platformType'],
+              'threatEntryType': match['threatEntryType'],
+              'confidence': match['confidence'],
+              'metadata': match['metadata'],
+            });
+          }
+        }
+        
+        // Add safe URLs (not in matches)
+        for (final url in urls) {
+          final isInMatches = results.any((result) => result['url'] == url);
+          if (!isInMatches) {
+            results.add({
+              'url': url,
+              'isSafe': true,
+              'threatType': null,
+              'platformType': null,
+              'threatEntryType': null,
+              'confidence': null,
+              'metadata': null,
+            });
+          }
+        }
+        
+        return results;
+      } else {
+        print('❌ Safe Browsing API error: ${response.statusCode}');
+        return urls.map((url) => {
+          'url': url,
+          'isSafe': true,
+          'error': 'API request failed: ${response.statusCode}',
+        }).toList();
+      }
+    } catch (e) {
+      print('❌ Safe Browsing API exception: $e');
+      return urls.map((url) => {
+        'url': url,
+        'isSafe': true,
+        'error': 'Exception: $e',
+      }).toList();
+    }
+  }
+
+  // Get threat type description
+  static String getThreatTypeDescription(String threatType) {
+    switch (threatType) {
+      case 'MALWARE':
+        return 'Malware detected';
+      case 'SOCIAL_ENGINEERING':
+        return 'Phishing or social engineering';
+      case 'UNWANTED_SOFTWARE':
+        return 'Unwanted software';
+      case 'POTENTIALLY_HARMFUL_APPLICATION':
+        return 'Potentially harmful application';
+      default:
+        return 'Unknown threat type';
+    }
+  }
+
+  // Get risk level based on threat type
+  static String getRiskLevel(String threatType) {
+    switch (threatType) {
+      case 'MALWARE':
+        return 'HIGH';
+      case 'SOCIAL_ENGINEERING':
+        return 'HIGH';
+      case 'UNWANTED_SOFTWARE':
+        return 'MEDIUM';
+      case 'POTENTIALLY_HARMFUL_APPLICATION':
+        return 'MEDIUM';
+      default:
+        return 'LOW';
+    }
+  }
+}
+

@@ -1,0 +1,28 @@
+{
+  "functions": {
+    "source": "functions"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "parental-control-app-7581f",
+          "appId": "1:832297570081:android:324d70c4bdd93dea7e7860",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "parental-control-app-7581f",
+          "configurations": {
+            "android": "1:832297570081:android:324d70c4bdd93dea7e7860",
+            "ios": "1:832297570081:ios:5d1fcd5a2819781d7e7860",
+            "macos": "1:832297570081:ios:5d1fcd5a2819781d7e7860",
+            "web": "1:832297570081:web:826b8a9b4bfd29a27e7860",
+            "windows": "1:832297570081:web:a1ee656d19ab6c067e7860"
+          }
+        }
+      }
+    }
+  }
+}

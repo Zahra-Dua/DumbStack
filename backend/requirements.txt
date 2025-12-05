@@ -1,0 +1,11 @@
+flask
+flask-cors
+transformers
+sentence-transformers
+torch
+scikit-learn
+langchain
+langchain-community
+langchain-huggingface
+google-generativeai
+python-dotenv
