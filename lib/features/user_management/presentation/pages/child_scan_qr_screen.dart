@@ -26,6 +26,7 @@ import 'package:parental_control_app/features/call_logging/data/datasources/call
 import 'package:parental_control_app/features/notifications/presentation/pages/sos_emergency_screen.dart';
 import 'package:parental_control_app/features/child_tracking/data/services/real_data_collection_service.dart';
 import 'package:parental_control_app/features/app_limits/presentation/pages/child_installed_apps_screen.dart';
+import 'package:parental_control_app/features/user_management/presentation/pages/child_home_screen_new.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
@@ -140,19 +141,29 @@ class _ChildScanQRScreenState extends State<ChildScanQRScreen> {
     }
   }
 
-  Future<void> _linkChildToParent(String parentUid) async {
-    final childData = await showDialog<Map<String, dynamic>>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => _buildChildProfileDialog(),
-    );
+  Future<void> _linkChildToParent(String parentUid, {Map<String, dynamic>? embeddedChildData}) async {
+    Map<String, dynamic>? childData;
+    
+    // If child data is embedded in QR, use it directly
+    if (embeddedChildData != null) {
+      print('✅ [ChildQR] Using embedded child data from QR');
+      childData = embeddedChildData;
+    } else {
+      // Otherwise, show form dialog (fallback for old QR codes)
+      print('⚠️ [ChildQR] No embedded child data, showing form dialog');
+      childData = await showDialog<Map<String, dynamic>>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _buildChildProfileDialog(),
+      );
 
-    if (childData == null) {
-      setState(() { 
-        _scanning = true;
-        _isProcessingQR = false;
-      });
-      return;
+      if (childData == null) {
+        setState(() { 
+          _scanning = true;
+          _isProcessingQR = false;
+        });
+        return;
+      }
     }
 
     try {
@@ -162,17 +173,18 @@ class _ChildScanQRScreenState extends State<ChildScanQRScreen> {
         firstName: childData['firstName'] ?? '',
         lastName: childData['lastName'] ?? '',
         childName: childData['name'],
-        age: childData['age'],
-        gender: childData['gender'],
-        hobbies: childData['hobbies'],
+        age: childData['age'] ?? 0,
+        gender: childData['gender'] ?? 'Male',
+        hobbies: List<String>.from(childData['hobbies'] ?? []),
       );
 
       final prefs = await SharedPreferences.getInstance();
+      final childUid = FirebaseAuth.instance.currentUser!.uid;
       await prefs.setString('user_type', 'child');
       await prefs.setString('child_name', childData['name']);
       await prefs.setString('parent_uid', parentUid);
-      await prefs.setString('child_uid', FirebaseAuth.instance.currentUser!.uid);
-      print('Stored parent_uid: $parentUid, child_uid: ${FirebaseAuth.instance.currentUser!.uid}');
+      await prefs.setString('child_uid', childUid);
+      print('Stored parent_uid: $parentUid, child_uid: $childUid');
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
@@ -461,11 +473,17 @@ class _ChildScanQRScreenState extends State<ChildScanQRScreen> {
       print('QR parsing result: $qrData'); // Debug log
       
       String? parentUid;
+      Map<String, dynamic>? embeddedChildData;
       
       // Check if QR data is JSON format
       // Handle different QR code types (JSON format)
       if (qrData != null) {
-        if (qrData['type'] == 'user_profile') {
+        if (qrData['type'] == 'child_link') {
+          // New format: QR contains child data embedded
+          parentUid = qrData['parentUid'];
+          embeddedChildData = qrData['childData'] as Map<String, dynamic>?;
+          print('✅ [ChildQR] Found child_link QR with embedded child data');
+        } else if (qrData['type'] == 'user_profile') {
           // Parent profile QR code
           if (qrData['userType'] == 'parent') {
             parentUid = qrData['uid'];
@@ -568,7 +586,7 @@ class _ChildScanQRScreenState extends State<ChildScanQRScreen> {
           }
           
           // Continue with linking process
-          await _linkChildToParent(parentUid);
+          await _linkChildToParent(parentUid, embeddedChildData: embeddedChildData);
         }
       } catch (e) {
         print('Error checking QR expiration: $e');
@@ -588,7 +606,7 @@ class _ChildScanQRScreenState extends State<ChildScanQRScreen> {
         }
       }
       
-      await _linkChildToParent(parentUid);
+      await _linkChildToParent(parentUid, embeddedChildData: embeddedChildData);
       // Clear timer after successful link
       _expirationCheckTimer?.cancel();
       setState(() {
@@ -785,14 +803,25 @@ class _ChildScanQRScreenState extends State<ChildScanQRScreen> {
   }
 }
 
-class ChildHomeScreen extends StatefulWidget {
+// Use new child home screen
+class ChildHomeScreen extends StatelessWidget {
   const ChildHomeScreen({super.key});
 
   @override
-  State<ChildHomeScreen> createState() => _ChildHomeScreenState();
+  Widget build(BuildContext context) {
+    return const ChildHomeScreenNew();
+  }
 }
 
-class _ChildHomeScreenState extends State<ChildHomeScreen> {
+// Old implementation kept for reference but not used
+class _ChildHomeScreenOld extends StatefulWidget {
+  const _ChildHomeScreenOld({super.key});
+
+  @override
+  State<_ChildHomeScreenOld> createState() => _ChildHomeScreenOldState();
+}
+
+class _ChildHomeScreenOldState extends State<_ChildHomeScreenOld> {
   bool _isLocationTracking = false;
   bool _isGeofencingMonitoring = false;
   late ChildLocationService _locationService;
@@ -1706,5 +1735,6 @@ class _ChildHomeScreenState extends State<ChildHomeScreen> {
       ),
     );
   }
+
 }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:parental_control_app/features/user_management/presentation/pages/parent_qr_screen.dart';
+import 'package:parental_control_app/features/user_management/presentation/pages/add_child_form_screen.dart';
 import 'package:parental_control_app/core/constants/app_colors.dart';
 import 'package:parental_control_app/core/utils/media_query_helpers.dart';
 import 'package:parental_control_app/core/utils/error_message_helper.dart';
@@ -266,7 +267,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const ParentQRScreen(),
+                        builder: (context) => const AddChildFormScreen(),
                       ),
                     );
                   },
@@ -403,7 +404,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => const ParentQRScreen(),
+                                      builder: (context) => const AddChildFormScreen(),
                                     ),
                                   );
                                 },

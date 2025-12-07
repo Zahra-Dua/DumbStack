@@ -153,6 +153,7 @@ class _LocationMapWidgetState extends State<LocationMapWidget> {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 children: [
@@ -162,15 +163,18 @@ class _LocationMapWidgetState extends State<LocationMapWidget> {
                     size: 24,
                   ),
                   SizedBox(width: mq.w(0.02)),
-                  Text(
-                    widget.childName,
-                    style: TextStyle(
-                      fontSize: mq.sp(0.05),
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
+                  Flexible(
+                    child: Text(
+                      widget.childName,
+                      style: TextStyle(
+                        fontSize: mq.sp(0.05),
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   Container(
                     padding: EdgeInsets.symmetric(
                       horizontal: mq.w(0.03),
@@ -193,11 +197,15 @@ class _LocationMapWidgetState extends State<LocationMapWidget> {
               ),
               SizedBox(height: mq.h(0.01)),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.location_on,
-                    color: Colors.red,
-                    size: 20,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Icon(
+                      Icons.location_on,
+                      color: Colors.red,
+                      size: 20,
+                    ),
                   ),
                   SizedBox(width: mq.w(0.02)),
                   Expanded(
@@ -207,6 +215,8 @@ class _LocationMapWidgetState extends State<LocationMapWidget> {
                         fontSize: mq.sp(0.04),
                         color: AppColors.textLight,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -220,11 +230,14 @@ class _LocationMapWidgetState extends State<LocationMapWidget> {
                     size: 20,
                   ),
                   SizedBox(width: mq.w(0.02)),
-                  Text(
-                    'Last updated: ${_formatTime(_currentLocation!.timestamp)}',
-                    style: TextStyle(
-                      fontSize: mq.sp(0.035),
-                      color: Colors.grey[600],
+                  Expanded(
+                    child: Text(
+                      'Last updated: ${_formatTime(_currentLocation!.timestamp)}',
+                      style: TextStyle(
+                        fontSize: mq.sp(0.035),
+                        color: Colors.grey[600],
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],

@@ -3,6 +3,7 @@ package com.example.parental_control_app
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Log
 
 class BootReceiver : BroadcastReceiver() {
@@ -14,7 +15,13 @@ class BootReceiver : BroadcastReceiver() {
                 if (shouldStart) {
                     Log.d("BootReceiver", "Tracking enabled flag found; starting VPN service")
                     val serviceIntent = Intent(context, UrlBlockingVpnService::class.java)
-                    context.startForegroundService(serviceIntent)
+                    // startForegroundService() is only available on API 26+ (Android 8.0+)
+                    // Use startService() as fallback for older versions (API 23-25)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        context.startForegroundService(serviceIntent)
+                    } else {
+                        context.startService(serviceIntent)
+                    }
                 } else {
                     Log.d("BootReceiver", "Tracking not enabled; skipping service start")
                 }

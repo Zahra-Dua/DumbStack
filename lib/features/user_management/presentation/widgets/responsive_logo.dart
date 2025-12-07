@@ -14,7 +14,19 @@ class ResponsiveLogo extends StatelessWidget {
     final logoSize = mq.w(sizeFactor);
     return Column(
       children: [
-        Image.asset(AppAssets.logo, width: logoSize, height: logoSize, fit: BoxFit.contain),
+        // Crop the bottom portion to remove "SafeNest" text
+        ClipRect(
+          child: Align(
+            alignment: Alignment.topCenter,
+            heightFactor: 0.80, // Show top 80% (complete shield visible, text hidden)
+            child: Image.asset(
+              AppAssets.logo,
+              width: logoSize,
+              height: logoSize,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
       ],
     );
   }

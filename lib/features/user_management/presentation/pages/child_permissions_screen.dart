@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:parental_control_app/core/constants/app_colors.dart';
 import 'package:parental_control_app/core/utils/media_query_helpers.dart';
 import 'package:parental_control_app/features/user_management/presentation/pages/child_scan_qr_screen.dart';
 import 'package:parental_control_app/features/child_tracking/data/services/child_permission_service.dart';
+import 'package:parental_control_app/features/app_limits/data/services/real_time_app_usage_service.dart';
 
 class ChildPermissionsScreen extends StatefulWidget {
   const ChildPermissionsScreen({super.key});
@@ -325,6 +327,9 @@ class _ChildPermissionsScreenState extends State<ChildPermissionsScreen> with Wi
         // Initialize message monitoring
         await _initializeMessageMonitoring();
         
+        // Auto-sync installed apps after permissions are granted
+        await _syncInstalledAppsAfterPermissions();
+        
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -373,6 +378,46 @@ class _ChildPermissionsScreenState extends State<ChildPermissionsScreen> with Wi
       print('✅ TRACKING SERVICES: Initialized successfully');
     } catch (e) {
       print('❌ TRACKING SERVICES ERROR: $e');
+    }
+  }
+
+  /// Auto-sync installed apps after permissions are granted
+  Future<void> _syncInstalledAppsAfterPermissions() async {
+    try {
+      print('🔄 [ChildPermissions] ========== AUTO-SYNCING INSTALLED APPS ==========');
+      
+      // Get parent and child IDs from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final parentId = prefs.getString('parent_uid');
+      final childId = prefs.getString('child_uid');
+      
+      if (parentId == null || childId == null) {
+        print('❌ [ChildPermissions] Cannot sync: parentId or childId is null');
+        print('   parentId: $parentId, childId: $childId');
+        return;
+      }
+      
+      print('   Parent ID: $parentId');
+      print('   Child ID: $childId');
+      
+      // Initialize and start RealTimeAppUsageService for auto-sync
+      final appUsageService = RealTimeAppUsageService();
+      appUsageService.initialize(
+        childId: childId,
+        parentId: parentId,
+      );
+      
+      // Start tracking which will trigger immediate installed apps sync
+      await appUsageService.startTracking();
+      
+      print('✅ [ChildPermissions] Installed apps auto-sync initiated');
+      print('📱 [ChildPermissions] Apps will sync to Firebase automatically');
+      print('🔄 [ChildPermissions] ================================================');
+    } catch (e, stackTrace) {
+      print('❌ [ChildPermissions] Error auto-syncing installed apps: $e');
+      print('❌ [ChildPermissions] Stack trace: $stackTrace');
+      // Don't show error to user - this is background operation
+      // The sync will happen when child app initializes anyway
     }
   }
 }

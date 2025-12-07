@@ -41,51 +41,59 @@ class _GeofenceSettingsCardState extends State<GeofenceSettingsCard> {
 
   @override
   Widget build(BuildContext context) {
-    final mq = MQ(context);
-
-    return Card(
-      margin: EdgeInsets.all(mq.w(0.04)),
-      elevation: 4,
+    return Material(
+      color: AppColors.white,
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: EdgeInsets.all(mq.w(0.04)),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    padding: EdgeInsets.all(mq.w(0.03)),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: AppColors.darkCyan.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.location_searching,
                       color: AppColors.darkCyan,
                       size: 24,
                     ),
                   ),
-                  SizedBox(width: mq.w(0.03)),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'Geofence Zone',
                           style: TextStyle(
-                            fontSize: mq.sp(0.05),
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textDark,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
+                        const SizedBox(height: 4),
                         Text(
                           'Set safe zones for ${widget.childName}',
-                          style: TextStyle(
-                            fontSize: mq.sp(0.04),
-                            color: AppColors.textLight,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey,
                           ),
                         ),
                       ],
@@ -104,11 +112,10 @@ class _GeofenceSettingsCardState extends State<GeofenceSettingsCard> {
                 ],
               ),
               
-              SizedBox(height: mq.h(0.02)),
-              
               if (_isGeofenceEnabled) ...[
+                const SizedBox(height: 12),
                 Container(
-                  padding: EdgeInsets.all(mq.w(0.03)),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
@@ -119,17 +126,17 @@ class _GeofenceSettingsCardState extends State<GeofenceSettingsCard> {
                     children: [
                       Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.info_outline,
                             color: Colors.green,
                             size: 20,
                           ),
-                          SizedBox(width: mq.w(0.02)),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Geofence is active',
                               style: TextStyle(
-                                fontSize: mq.sp(0.04),
+                                fontSize: 13,
                                 color: Colors.green[700],
                                 fontWeight: FontWeight.w500,
                               ),
@@ -137,39 +144,39 @@ class _GeofenceSettingsCardState extends State<GeofenceSettingsCard> {
                           ),
                         ],
                       ),
-                      SizedBox(height: mq.h(0.01)),
+                      const SizedBox(height: 8),
                       Text(
                         'Zone: $_zoneName',
                         style: TextStyle(
-                          fontSize: mq.sp(0.035),
+                          fontSize: 12,
                           color: Colors.green[600],
                         ),
                       ),
                       Text(
                         'Radius: ${_radius.toInt()} meters',
                         style: TextStyle(
-                          fontSize: mq.sp(0.035),
+                          fontSize: 12,
                           color: Colors.green[600],
                         ),
                       ),
                     ],
                   ),
                 ),
-                SizedBox(height: mq.h(0.02)),
               ],
               
+              const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.arrow_forward_ios,
                     color: AppColors.darkCyan,
                     size: 16,
                   ),
-                  SizedBox(width: mq.w(0.01)),
+                  const SizedBox(width: 4),
                   Text(
                     'Tap to configure zones',
                     style: TextStyle(
-                      fontSize: mq.sp(0.04),
+                      fontSize: 13,
                       color: AppColors.darkCyan,
                       fontWeight: FontWeight.w500,
                     ),

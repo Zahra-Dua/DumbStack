@@ -3,12 +3,15 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:parental_control_app/core/constants/app_colors.dart';
 import 'package:parental_control_app/core/utils/media_query_helpers.dart';
 import 'package:parental_control_app/core/utils/error_message_helper.dart';
+import 'package:parental_control_app/core/services/qr_code_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 
 class ParentQRScreen extends StatefulWidget {
-  const ParentQRScreen({super.key});
+  final Map<String, dynamic>? childData;
+  
+  const ParentQRScreen({super.key, this.childData});
 
   @override
   State<ParentQRScreen> createState() => _ParentQRScreenState();
@@ -28,26 +31,31 @@ class _ParentQRScreenState extends State<ParentQRScreen> {
   @override
   void initState() {
     super.initState();
-    _checkQRCodeExpiration().then((_) {
-      if (!_isExpired) {
-        // If not expired, check if we have existing QR data
-        final currentUser = FirebaseAuth.instance.currentUser;
-        if (currentUser != null) {
-          setState(() {
-            _qrData = currentUser.uid;
-            _isLoading = false;
-          });
-          // Make sure timer starts if QR code exists
-          if (_qrCodeGeneratedAt != null) {
-            _startExpirationTimer();
-            _startUpdateTimer();
+    // If child data is provided, generate QR immediately
+    if (widget.childData != null) {
+      _generateQRCode();
+    } else {
+      _checkQRCodeExpiration().then((_) {
+        if (!_isExpired) {
+          // If not expired, check if we have existing QR data
+          final currentUser = FirebaseAuth.instance.currentUser;
+          if (currentUser != null) {
+            setState(() {
+              _qrData = currentUser.uid;
+              _isLoading = false;
+            });
+            // Make sure timer starts if QR code exists
+            if (_qrCodeGeneratedAt != null) {
+              _startExpirationTimer();
+              _startUpdateTimer();
+            }
           }
+        } else {
+          // If expired, generate new one
+          _generateQRCode();
         }
-      } else {
-        // If expired, generate new one
-        _generateQRCode();
-      }
-    });
+      });
+    }
     _setupChildListener();
   }
 
@@ -76,12 +84,30 @@ class _ParentQRScreenState extends State<ParentQRScreen> {
         return;
       }
 
-      // Use parent UID directly as QR data
       final parentUid = currentUser.uid;
       final now = DateTime.now();
       
-      print('🔍 [ParentQR] Using parent UID as QR data: $parentUid');
-      print('🔍 [ParentQR] QR data length: ${parentUid.length}');
+      String qrDataString;
+      
+      // If child data is provided, embed it in QR code
+      if (widget.childData != null) {
+        final qrDataMap = QRCodeService.generateChildLinkQRData(
+          parentUid: parentUid,
+          firstName: widget.childData!['firstName'] ?? '',
+          lastName: widget.childData!['lastName'] ?? '',
+          childName: widget.childData!['name'] ?? '',
+          age: widget.childData!['age'] ?? 0,
+          gender: widget.childData!['gender'] ?? 'Male',
+          hobbies: List<String>.from(widget.childData!['hobbies'] ?? []),
+        );
+        qrDataString = QRCodeService.dataToJson(qrDataMap);
+        print('🔍 [ParentQR] Generated QR with child data embedded');
+      } else {
+        // Fallback to simple parent UID if no child data
+        qrDataString = parentUid;
+        print('🔍 [ParentQR] Using parent UID as QR data: $parentUid');
+      }
+      
       print('🔍 [ParentQR] QR code generated at: $now');
 
       // Store QR code generation timestamp in Firestore
@@ -102,7 +128,7 @@ class _ParentQRScreenState extends State<ParentQRScreen> {
       _expirationTimer?.cancel();
 
       setState(() {
-        _qrData = parentUid; // Use parentUid as QR content
+        _qrData = qrDataString;
         _qrCodeGeneratedAt = now;
         _isLoading = false;
       });
@@ -266,7 +292,7 @@ class _ParentQRScreenState extends State<ParentQRScreen> {
           .listen((QuerySnapshot snapshot) {
         print('🔄 [ParentQR] Children count changed: ${snapshot.docs.length}');
         
-        // If a new child was added, show success message but DON'T auto-navigate
+        // If a new child was added, show success message and navigate to home
         if (snapshot.docs.length > _initialChildrenCount) {
           _initialChildrenCount = snapshot.docs.length;
           
@@ -278,16 +304,21 @@ class _ParentQRScreenState extends State<ParentQRScreen> {
                   const Icon(Icons.child_care, color: Colors.white),
                   const SizedBox(width: 8),
                   const Expanded(
-                    child: Text('Child successfully linked! You can now go back to home.'),
+                    child: Text('Child successfully linked!'),
                   ),
                 ],
               ),
               backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
+              duration: const Duration(seconds: 2),
             ),
           );
           
-          // Don't auto-navigate - let parent decide when to go back
+          // Navigate back to home screen after a short delay
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              Navigator.pop(context);
+            }
+          });
         }
       });
     }

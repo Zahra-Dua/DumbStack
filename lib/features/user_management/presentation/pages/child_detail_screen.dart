@@ -193,6 +193,7 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> with SingleTicker
               childName: widget.childName,
               parentId: widget.parentId,
             ),
+            const SizedBox(height: 16),
             GeofenceSettingsCard(
               childId: widget.childId,
               childName: widget.childName,
@@ -358,12 +359,8 @@ class _ChildDetailScreenState extends State<ChildDetailScreen> with SingleTicker
             ],
           ),
           const SizedBox(height: 16),
-          Container(
+          SizedBox(
             height: 180,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: LocationMapWidget(

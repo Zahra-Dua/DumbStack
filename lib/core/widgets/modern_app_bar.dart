@@ -33,10 +33,18 @@ class ModernAppBar extends StatelessWidget implements PreferredSizeWidget {
           ? Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Image.asset(
-                  'assets/images/logo.png',
-                  height: 32,
-                  width: 32,
+                // Crop the bottom portion to remove "SafeNest" text
+                ClipRect(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    heightFactor: 0.80, // Show top 80% (complete shield visible, text hidden)
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      height: 32,
+                      width: 32,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: AppDesignSystem.spacingS),
                 Text(

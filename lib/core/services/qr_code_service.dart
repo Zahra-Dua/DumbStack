@@ -50,6 +50,31 @@ class QRCodeService {
     };
   }
 
+  /// Generate QR code data with child information embedded
+  static Map<String, dynamic> generateChildLinkQRData({
+    required String parentUid,
+    required String firstName,
+    required String lastName,
+    required String childName,
+    required int age,
+    required String gender,
+    required List<String> hobbies,
+  }) {
+    return {
+      'type': 'child_link',
+      'parentUid': parentUid,
+      'childData': {
+        'firstName': firstName,
+        'lastName': lastName,
+        'name': childName,
+        'age': age,
+        'gender': gender,
+        'hobbies': hobbies,
+      },
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    };
+  }
+
   /// Convert data to JSON string for QR code
   static String dataToJson(Map<String, dynamic> data) {
     return jsonEncode(data);

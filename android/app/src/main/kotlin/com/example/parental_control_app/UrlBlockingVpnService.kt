@@ -69,7 +69,13 @@ class UrlBlockingVpnService : VpnService() {
         if (shouldRestart) {
             Log.d(TAG, "Revoke received but tracking enabled; restarting service")
             val intent = Intent(this, UrlBlockingVpnService::class.java)
-            startForegroundService(intent)
+            // startForegroundService() is only available on API 26+ (Android 8.0+)
+            // Use startService() as fallback for older versions
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
         }
     }
     
