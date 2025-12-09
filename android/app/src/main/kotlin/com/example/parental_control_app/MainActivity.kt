@@ -42,6 +42,7 @@ class MainActivity : FlutterActivity() {
         
         // Set method channel for AppUsageTrackingService
         AppUsageTrackingService.setMethodChannel(appUsageChannel!!)
+        AppUsageTrackingService.setChildTrackingChannel(childTrackingChannel!!)
         
         // Set up URL logging callback for VPN service
         UrlBlockingVpnService.visitedUrlCallback = { domain ->
@@ -66,10 +67,12 @@ class MainActivity : FlutterActivity() {
                     result.success(true)
                 }
                 "startUrlTracking" -> {
+                    android.util.Log.d("MainActivity", "📞 [Native] Received startUrlTracking call from Flutter")
                     startUrlTracking()
                     result.success(true)
                 }
                 "startAppUsageTracking" -> {
+                    android.util.Log.d("MainActivity", "📞 [Native] Received startAppUsageTracking call from Flutter")
                     startAppUsageTracking()
                     result.success(true)
                 }
@@ -176,12 +179,30 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun startUrlTracking() {
+        android.util.Log.d("MainActivity", "")
+        android.util.Log.d("MainActivity", "🌐 ========== 🌐 STARTING URL TRACKING 🌐 ==========")
+        android.util.Log.d("MainActivity", "🌐 [Native] Starting URL tracking service...")
+        
+        // Check if accessibility permission is granted first
+        val hasAccessibility = checkAccessibilityPermission()
+        if (hasAccessibility) {
+            android.util.Log.d("MainActivity", "✅ [Native] Accessibility permission: GRANTED")
+        } else {
+            android.util.Log.w("MainActivity", "⚠️ [Native] Accessibility permission: NOT GRANTED")
+            android.util.Log.w("MainActivity", "⚠️ [Native] URL tracking will NOT work without this permission!")
+            android.util.Log.w("MainActivity", "⚠️ [Native] Please enable SafeNest in Settings > Accessibility")
+        }
+        
         // Start accessibility service for URL tracking
         val intent = Intent(this, UrlAccessibilityService::class.java)
         startService(intent)
+        android.util.Log.d("MainActivity", "✅ [Native] URL tracking service intent sent")
+        android.util.Log.d("MainActivity", "🌐 ==============================================")
+        android.util.Log.d("MainActivity", "")
     }
 
     private fun startAppUsageTracking() {
+        android.util.Log.d("MainActivity", "📱 [Native] Starting app usage tracking service...")
         // Start real-time app usage tracking service
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
             val intent = Intent(this, AppUsageTrackingService::class.java).apply {
@@ -192,6 +213,9 @@ class MainActivity : FlutterActivity() {
             } else {
                 startService(intent)
             }
+            android.util.Log.d("MainActivity", "✅ [Native] App usage tracking service started")
+        } else {
+            android.util.Log.e("MainActivity", "❌ [Native] App usage tracking not supported on this Android version")
         }
     }
 

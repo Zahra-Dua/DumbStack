@@ -138,7 +138,13 @@ class UrlAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         serviceInstance = this
-        Log.d(TAG, "AccessibilityService connected and ready!")
+        Log.d(TAG, "")
+        Log.d(TAG, "🌐 ========== 🌐 URL TRACKING SERVICE STARTED 🌐 ==========")
+        Log.d(TAG, "🌐 Service: UrlAccessibilityService")
+        Log.d(TAG, "🌐 Status: Connected and ready!")
+        Log.d(TAG, "🌐 Now monitoring all URL visits in browsers")
+        Log.d(TAG, "🌐 ====================================================")
+        Log.d(TAG, "")
         
         // Initialize usage stats manager
         usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -163,7 +169,18 @@ class UrlAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        event?.let { handleAccessibilityEvent(it) }
+        if (event == null) {
+            Log.d(TAG, "⚠️ [Native] Received null accessibility event")
+            return
+        }
+        
+        // Log every event for debugging (but only for browsers to avoid spam)
+        val packageName = event.packageName?.toString()
+        if (packageName != null && isBrowserApp(packageName)) {
+            Log.d(TAG, "📨 [Native] Accessibility event received: ${event.eventType} from $packageName")
+        }
+        
+        event.let { handleAccessibilityEvent(it) }
     }
 
     private fun handleAccessibilityEvent(event: AccessibilityEvent) {
@@ -215,28 +232,38 @@ class UrlAccessibilityService : AccessibilityService() {
         
         // Check if this is a browser and content changed (likely URL navigation)
         if (packageName != null && isBrowserApp(packageName)) {
+            Log.d(TAG, "🌐 [Native] Browser content changed detected: $packageName")
             val currentTime = System.currentTimeMillis()
             // Throttle URL detection to avoid duplicates (max once per 2 seconds)
             if (currentTime - lastUrlDetectionTime > 2000) {
-                Log.d(TAG, "🌐 Browser content changed: $packageName, extracting URL...")
+                Log.d(TAG, "🌐 [Native] Browser content changed: $packageName, extracting URL...")
                 // Try multiple times with increasing delays
                 Handler(Looper.getMainLooper()).postDelayed({
+                    Log.d(TAG, "🌐 [Native] Attempt 1: Extracting URL from $packageName...")
                     extractUrlFromBrowser()
                 }, 500) // First attempt after 500ms
                 Handler(Looper.getMainLooper()).postDelayed({
+                    Log.d(TAG, "🌐 [Native] Attempt 2: Extracting URL from $packageName...")
                     extractUrlFromBrowser()
                 }, 1500) // Second attempt after 1.5s
                 Handler(Looper.getMainLooper()).postDelayed({
+                    Log.d(TAG, "🌐 [Native] Attempt 3: Extracting URL from $packageName...")
                     extractUrlFromBrowser()
                 }, 3000) // Third attempt after 3s
                 lastUrlDetectionTime = currentTime
+            } else {
+                Log.d(TAG, "⏭️ [Native] Skipping URL extraction (throttled, last check was ${currentTime - lastUrlDetectionTime}ms ago)")
             }
+        } else if (packageName != null) {
+            Log.d(TAG, "ℹ️ [Native] Content changed in non-browser app: $packageName")
         }
     }
 
     private fun handleWindowStateChanged(event: AccessibilityEvent) {
         val packageName = event.packageName?.toString()
         val className = event.className?.toString()
+        
+        Log.d(TAG, "🪟 [Native] Window state changed: $packageName (class: $className)")
         
         if (packageName != null && packageName != lastAppPackage) {
             // App switched
@@ -249,34 +276,40 @@ class UrlAccessibilityService : AccessibilityService() {
             lastAppPackage = packageName
             appStartTime = System.currentTimeMillis()
             
-            Log.d(TAG, "App switched to: $packageName")
+            Log.d(TAG, "📱 [Native] App switched to: $packageName")
             
             // Send app launch event to Flutter
             sendAppLaunchEvent(packageName, className)
         }
         
         // Check if this is a browser app and try to extract URL
-        if (packageName != null && isBrowserApp(packageName)) {
-            Log.d(TAG, "🌐 Browser detected: $packageName, extracting URL...")
-            // Try multiple times with increasing delays
-            Handler(Looper.getMainLooper()).postDelayed({
-                Log.d(TAG, "🌐 Attempt 1: Extracting URL from $packageName...")
-                extractUrlFromBrowser()
-            }, 500) // First attempt after 500ms
-            Handler(Looper.getMainLooper()).postDelayed({
-                Log.d(TAG, "🌐 Attempt 2: Extracting URL from $packageName...")
-                extractUrlFromBrowser()
-            }, 1500) // Second attempt after 1.5s
-            Handler(Looper.getMainLooper()).postDelayed({
-                Log.d(TAG, "🌐 Attempt 3: Extracting URL from $packageName...")
-                extractUrlFromBrowser()
-            }, 3000) // Third attempt after 3s
+        if (packageName != null) {
+            val isBrowser = isBrowserApp(packageName)
+            Log.d(TAG, "🌐 [Native] Checking if $packageName is browser: $isBrowser")
             
-            // Start periodic URL checking while browser is active
-            startPeriodicUrlCheck()
-        } else {
-            // Stop periodic check if not a browser
-            stopPeriodicUrlCheck()
+            if (isBrowser) {
+                Log.d(TAG, "🌐 [Native] ✅ Browser detected: $packageName, extracting URL...")
+                // Try multiple times with increasing delays
+                Handler(Looper.getMainLooper()).postDelayed({
+                    Log.d(TAG, "🌐 [Native] Attempt 1: Extracting URL from $packageName...")
+                    extractUrlFromBrowser()
+                }, 500) // First attempt after 500ms
+                Handler(Looper.getMainLooper()).postDelayed({
+                    Log.d(TAG, "🌐 [Native] Attempt 2: Extracting URL from $packageName...")
+                    extractUrlFromBrowser()
+                }, 1500) // Second attempt after 1.5s
+                Handler(Looper.getMainLooper()).postDelayed({
+                    Log.d(TAG, "🌐 [Native] Attempt 3: Extracting URL from $packageName...")
+                    extractUrlFromBrowser()
+                }, 3000) // Third attempt after 3s
+                
+                // Start periodic URL checking while browser is active
+                startPeriodicUrlCheck()
+            } else {
+                Log.d(TAG, "ℹ️ [Native] Not a browser app: $packageName")
+                // Stop periodic check if not a browser
+                stopPeriodicUrlCheck()
+            }
         }
     }
     
@@ -302,15 +335,25 @@ class UrlAccessibilityService : AccessibilityService() {
             "com.huawei.browser",
             "com.sec.android.app.sbrowser"
         )
-        return browserPackages.contains(packageName) || 
+        val isBrowser = browserPackages.contains(packageName) || 
                packageName.contains("browser") || 
                packageName.contains("chrome") ||
                packageName.contains("firefox")
+        
+        if (isBrowser) {
+            Log.d(TAG, "✅ [Native] Browser detected: $packageName")
+        }
+        
+        return isBrowser
     }
     
     private fun extractUrlFromBrowser() {
         try {
+            Log.d(TAG, "")
+            Log.d(TAG, "🔍 ========== 🔍 URL EXTRACTION ATTEMPT 🔍 ==========")
+            Log.d(TAG, "🔍 Current app package: $lastAppPackage")
             Log.d(TAG, "🔍 Starting URL extraction from browser...")
+            
             val rootNode = rootInActiveWindow
             if (rootNode != null) {
                 Log.d(TAG, "✅ Root node obtained, searching for URL...")
@@ -326,6 +369,7 @@ class UrlAccessibilityService : AccessibilityService() {
                         Log.d(TAG, "⚠️ Same URL detected, skipping duplicate: $url")
                     } else if (url == null || url.isEmpty()) {
                         Log.d(TAG, "⚠️ No URL found in browser window (package: $lastAppPackage)")
+                        Log.d(TAG, "🔄 Trying alternative URL extraction method...")
                         // Try alternative method: check window title/content
                         tryAlternativeUrlExtraction(rootNode)
                     }
@@ -333,7 +377,13 @@ class UrlAccessibilityService : AccessibilityService() {
                 rootNode.recycle()
             } else {
                 Log.d(TAG, "⚠️ Root node is null - cannot extract URL")
+                Log.d(TAG, "⚠️ This might mean:")
+                Log.d(TAG, "   1. Browser is not in foreground")
+                Log.d(TAG, "   2. Accessibility service doesn't have proper permissions")
+                Log.d(TAG, "   3. Browser window is not accessible")
             }
+            Log.d(TAG, "🔍 ==============================================")
+            Log.d(TAG, "")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error extracting URL from browser: ${e.message}")
             e.printStackTrace()
@@ -670,7 +720,12 @@ class UrlAccessibilityService : AccessibilityService() {
         // Normalize URL - ensure it has http:// or https://
         val normalizedUrl = normalizeUrl(url)
         
-        Log.d(TAG, "🌐 URL visited detected: $normalizedUrl in $packageName")
+        Log.d(TAG, "")
+        Log.d(TAG, "🌐 ========== 🌐 URL VISITED - NATIVE SIDE 🌐 ==========")
+        Log.d(TAG, "🌐 URL: $normalizedUrl")
+        Log.d(TAG, "🌐 Package: $packageName")
+        Log.d(TAG, "🌐 Source: $source")
+        Log.d(TAG, "🌐 ====================================================")
         
         val eventData = mapOf(
             "url" to normalizedUrl,
@@ -686,18 +741,25 @@ class UrlAccessibilityService : AccessibilityService() {
         Handler(Looper.getMainLooper()).post {
             // Send to child_tracking channel for Firebase upload
             try {
-                childTrackingChannel?.invokeMethod("onUrlVisited", eventData)
-                Log.d(TAG, "✅ URL event sent to child_tracking channel: $normalizedUrl")
+                if (childTrackingChannel == null) {
+                    Log.e(TAG, "❌ [Native] child_tracking channel is NULL! Cannot send URL event")
+                } else {
+                    childTrackingChannel?.invokeMethod("onUrlVisited", eventData)
+                    Log.d(TAG, "✅ [Native] URL event sent to child_tracking channel: $normalizedUrl")
+                    Log.d(TAG, "✅ [Native] Flutter should receive this URL now")
+                }
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Error sending URL to child_tracking: ${e.message}")
+                Log.e(TAG, "❌ [Native] Error sending URL to child_tracking: ${e.message}")
+                e.printStackTrace()
             }
             
             // Also send to url_tracking channel for UI updates (if needed)
             try {
                 methodChannel?.invokeMethod("onUrlDetected", eventData)
             } catch (e: Exception) {
-                Log.e(TAG, "Error sending URL to url_tracking: ${e.message}")
+                Log.e(TAG, "⚠️ [Native] Error sending URL to url_tracking: ${e.message}")
             }
+            Log.d(TAG, "")
         }
     }
     

@@ -13,6 +13,11 @@ import '../../../notifications/presentation/pages/sos_emergency_screen.dart';
 import '../../../parent_dashboard/data/services/parent_dashboard_firebase_service.dart';
 import '../../../child_tracking/data/services/child_permission_service.dart';
 import 'package:parental_control_app/features/user_management/presentation/pages/child_settings_screen.dart';
+import '../../../location_tracking/data/services/child_location_service.dart';
+import '../../../location_tracking/data/datasources/location_remote_datasource.dart';
+import '../../../child_tracking/data/services/real_data_collection_service.dart';
+import '../../../app_limits/data/services/real_time_app_usage_service.dart';
+import '../../../call_logging/data/datasources/call_log_remote_datasource.dart';
 
 class ChildHomeScreenNew extends StatefulWidget {
   const ChildHomeScreenNew({super.key});
@@ -31,6 +36,10 @@ class _ChildHomeScreenNewState extends State<ChildHomeScreenNew> with SingleTick
   final ParentDashboardFirebaseService _firebaseService = ParentDashboardFirebaseService();
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  ChildLocationService? _locationService;
+  final RealDataCollectionService _dataCollectionService = RealDataCollectionService();
+  RealTimeAppUsageService? _appUsageService;
+  CallLogRemoteDataSourceImpl? _callLogDataSource;
 
   @override
   void initState() {
@@ -49,7 +58,82 @@ class _ChildHomeScreenNewState extends State<ChildHomeScreenNew> with SingleTick
   @override
   void dispose() {
     _animationController.dispose();
+    _locationService?.dispose();
+    _appUsageService?.stopTracking();
+    _callLogDataSource?.stopMonitoring();
     super.dispose();
+  }
+
+  /// Initialize location and battery tracking services
+  Future<void> _initializeServices() async {
+    try {
+      if (_parentId == null || _childId == null) {
+        print('⚠️ [ChildHome] Parent or child ID not available yet');
+        return;
+      }
+      
+      print('🚀 [ChildHome] ========== INITIALIZING ALL CHILD SERVICES ==========');
+      print('   Parent ID: $_parentId');
+      print('   Child ID: $_childId');
+      
+      // Initialize location service
+      print('📍 [ChildHome] Initializing location tracking...');
+      _locationService = ChildLocationService(
+        locationDataSource: LocationRemoteDataSourceImpl(firestore: FirebaseFirestore.instance),
+      );
+      
+      // Initialize and start location tracking
+      await _locationService!.initializeLocationTracking();
+      await _locationService!.startLocationTracking();
+      print('✅ [ChildHome] Location and battery tracking started');
+      
+      // Initialize URL and App Usage tracking
+      print('🌐 [ChildHome] Initializing URL and App Usage tracking...');
+      await _dataCollectionService.initializeRealDataCollection(
+        childId: _childId!,
+        parentId: _parentId!,
+      );
+      print('✅ [ChildHome] URL and App Usage tracking initialized');
+      
+      // Initialize real-time app usage service
+      print('📱 [ChildHome] Initializing real-time app usage service...');
+      _appUsageService = RealTimeAppUsageService();
+      _appUsageService!.initialize(
+        childId: _childId!,
+        parentId: _parentId!,
+      );
+      await _appUsageService!.startTracking();
+      print('✅ [ChildHome] Real-time app usage tracking started');
+      
+      // Initialize call log monitoring
+      print('📞 [ChildHome] Initializing call log monitoring...');
+      
+      // Check READ_CALL_LOG permission first
+      final callLogPermission = await Permission.phone.status;
+      if (callLogPermission.isGranted) {
+        print('✅ [ChildHome] READ_CALL_LOG permission: GRANTED');
+      } else {
+        print('⚠️ [ChildHome] READ_CALL_LOG permission: NOT GRANTED');
+        print('⚠️ [ChildHome] Call log tracking will not work without this permission');
+        print('⚠️ [ChildHome] Please grant phone/call log permission in app settings');
+      }
+      
+      _callLogDataSource = CallLogRemoteDataSourceImpl(
+        firestore: FirebaseFirestore.instance,
+      );
+      _callLogDataSource!.startContinuousMonitoring(
+        parentId: _parentId!,
+        childId: _childId!,
+      );
+      print('✅ [ChildHome] Call log monitoring started');
+      print('📞 [ChildHome] Calls will be uploaded to Firebase every 10 seconds');
+      print('📞 [ChildHome] Firebase path: parents/$_parentId/children/$_childId/call_logs');
+      
+      print('✅ [ChildHome] ========== ALL SERVICES INITIALIZED SUCCESSFULLY ==========');
+    } catch (e) {
+      print('❌ [ChildHome] Error initializing services: $e');
+      print('   Stack trace: ${e.toString()}');
+    }
   }
 
   Future<void> _loadUserInfo() async {
@@ -89,6 +173,15 @@ class _ChildHomeScreenNewState extends State<ChildHomeScreenNew> with SingleTick
             _parentName = parentDoc.data()?['name'] ?? 'Unknown Parent';
           });
         }
+        
+        // Initialize services after user info is loaded
+        _initializeServices();
+      } else {
+        print('⚠️ [ChildHome] Child or parent UID not found in SharedPreferences');
+        print('   Child UID: $childUid');
+        print('   Parent UID: $parentUid');
+        // Retry after delay
+        Future.delayed(const Duration(seconds: 2), () => _loadUserInfo());
       }
     } catch (e) {
       print('❌ Error loading user info: $e');

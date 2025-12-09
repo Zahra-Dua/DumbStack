@@ -21,24 +21,24 @@ class RealDataCollectionService {
       
       // Set up method channel for native communication
       _channel.setMethodCallHandler((call) async {
-        print('📨 Method channel received: ${call.method}');
-        print('📨 Arguments: ${call.arguments}');
+        print('📨 [ChildTracking] Method channel received: ${call.method}');
+        print('📨 [ChildTracking] Arguments: ${call.arguments}');
         
         switch (call.method) {
           case 'onUrlVisited':
-            print('🌐 Handling onUrlVisited event...');
+            print('🌐 [ChildTracking] Handling onUrlVisited event...');
             await _handleRealUrlVisited(call.arguments, childId, parentId);
             break;
           case 'onAppUsageUpdated':
-            print('📱 Handling onAppUsageUpdated event...');
+            print('📱 [ChildTracking] Handling onAppUsageUpdated event...');
             await _handleRealAppUsage(call.arguments, childId, parentId);
             break;
           case 'onAppLaunched':
-            print('🚀 Handling onAppLaunched event...');
+            print('🚀 [ChildTracking] Handling onAppLaunched event...');
             await _handleRealAppLaunched(call.arguments, childId, parentId);
             break;
           default:
-            print('⚠️ Unknown method: ${call.method}');
+            print('⚠️ [ChildTracking] Unknown method: ${call.method}');
         }
       });
 
@@ -56,15 +56,62 @@ class RealDataCollectionService {
   // Start native Android tracking services
   Future<void> _startNativeTracking() async {
     try {
+      print('🔄 [ChildTracking] Starting native Android tracking services...');
+      
+      // Check accessibility permission first (required for URL tracking)
+      try {
+        final hasAccessibility = await _channel.invokeMethod<bool>('checkAccessibilityPermission') ?? false;
+        if (hasAccessibility) {
+          print('✅ [ChildTracking] Accessibility permission: GRANTED');
+        } else {
+          print('⚠️ [ChildTracking] Accessibility permission: NOT GRANTED');
+          print('⚠️ [ChildTracking] URL tracking will not work without accessibility permission');
+          print('⚠️ [ChildTracking] Please enable it in Settings > Accessibility');
+        }
+      } catch (e) {
+        print('⚠️ [ChildTracking] Could not check accessibility permission: $e');
+      }
+      
       // Start URL tracking service
-      await _channel.invokeMethod('startUrlTracking');
+      print('🌐 [ChildTracking] Starting URL tracking service...');
+      try {
+        await _channel.invokeMethod('startUrlTracking');
+        print('✅ [ChildTracking] URL tracking service started');
+        print('📊 [ChildTracking] Listening for URL visits in browsers...');
+      } catch (e) {
+        print('❌ [ChildTracking] Failed to start URL tracking: $e');
+        print('⚠️ [ChildTracking] Make sure accessibility permission is granted');
+      }
+      
+      // Check usage stats permission (required for app tracking)
+      try {
+        final hasUsageStats = await _channel.invokeMethod<bool>('checkUsageStatsPermission') ?? false;
+        if (hasUsageStats) {
+          print('✅ [ChildTracking] Usage stats permission: GRANTED');
+        } else {
+          print('⚠️ [ChildTracking] Usage stats permission: NOT GRANTED');
+          print('⚠️ [ChildTracking] App tracking will not work without usage stats permission');
+        }
+      } catch (e) {
+        print('⚠️ [ChildTracking] Could not check usage stats permission: $e');
+      }
       
       // Start app usage tracking service
-      await _channel.invokeMethod('startAppUsageTracking');
+      print('📱 [ChildTracking] Starting app usage tracking service...');
+      try {
+        await _channel.invokeMethod('startAppUsageTracking');
+        print('✅ [ChildTracking] App usage tracking service started');
+        print('📊 [ChildTracking] Listening for app launches and usage...');
+      } catch (e) {
+        print('❌ [ChildTracking] Failed to start app usage tracking: $e');
+        print('⚠️ [ChildTracking] Make sure usage stats permission is granted');
+      }
       
-      print('✅ Native tracking services started');
+      print('✅ [ChildTracking] All native tracking services started');
+      print('📊 [ChildTracking] Now listening for URL visits and app usage...');
     } catch (e) {
-      print('❌ Error starting native tracking: $e');
+      print('❌ [ChildTracking] Error starting native tracking: $e');
+      print('❌ [ChildTracking] Stack trace: ${StackTrace.current}');
     }
   }
 
@@ -75,17 +122,19 @@ class RealDataCollectionService {
     String parentId,
   ) async {
     try {
-      print('🌐 ========== URL VISITED EVENT ==========');
+      print('');
+      print('🌐 ========== 🌐 URL VISITED - CHILD SIDE 🌐 ==========');
       print('🌐 URL: ${data['url']}');
-      print('🌐 Title: ${data['title']}');
-      print('🌐 Package: ${data['packageName']}');
-      print('🌐 Browser: ${data['browserName']}');
+      print('🌐 Title: ${data['title'] ?? 'No title'}');
+      print('🌐 Package: ${data['packageName'] ?? 'Unknown'}');
+      print('🌐 Browser: ${data['browserName'] ?? 'Unknown'}');
       print('🌐 Child ID: $childId');
       print('🌐 Parent ID: $parentId');
-      print('🌐 =======================================');
+      print('🌐 Timestamp: ${DateTime.now()}');
+      print('🌐 ====================================================');
       
       if (data['url'] == null || (data['url'] as String).isEmpty) {
-        print('⚠️ URL is empty, skipping upload');
+        print('⚠️ [URL Tracking] URL is empty, skipping upload');
         return;
       }
       
@@ -99,11 +148,13 @@ class RealDataCollectionService {
         metadata: data['metadata'] != null ? Map<String, dynamic>.from(data['metadata']) : null,
       );
       
-      print('✅ Real URL uploaded to Firebase successfully: ${data['url']}');
-      print('✅ Firebase path: parents/$parentId/children/$childId/visitedUrls');
+      print('✅ [URL Tracking] URL uploaded to Firebase successfully!');
+      print('✅ [URL Tracking] Firebase path: parents/$parentId/children/$childId/visitedUrls');
+      print('✅ [URL Tracking] Parent side should now see this URL');
+      print('');
     } catch (e) {
-      print('❌ Error uploading real URL: $e');
-      print('❌ Stack trace: ${StackTrace.current}');
+      print('❌ [URL Tracking] Error uploading URL: $e');
+      print('❌ [URL Tracking] Stack trace: ${StackTrace.current}');
     }
   }
 
@@ -114,13 +165,27 @@ class RealDataCollectionService {
     String parentId,
   ) async {
     try {
-      print('📱 Real app usage: ${data['appName']}');
+      final appName = data['appName'] ?? 'Unknown App';
+      final packageName = data['packageName'] ?? 'Unknown';
+      final usageDuration = data['usageDuration'] ?? 0;
+      final launchCount = data['launchCount'] ?? 0;
+      
+      print('');
+      print('📱 ========== 📱 APP USAGE - CHILD SIDE 📱 ==========');
+      print('📱 App Name: $appName');
+      print('📱 Package: $packageName');
+      print('📱 Usage Duration: ${usageDuration} minutes');
+      print('📱 Launch Count: $launchCount');
+      print('📱 Child ID: $childId');
+      print('📱 Parent ID: $parentId');
+      print('📱 Timestamp: ${DateTime.now()}');
+      print('📱 =================================================');
       
       await _appService.uploadAppUsageToFirebase(
-        packageName: data['packageName'] ?? '',
-        appName: data['appName'] ?? '',
-        usageDuration: data['usageDuration'] ?? 0,
-        launchCount: data['launchCount'] ?? 0,
+        packageName: packageName,
+        appName: appName,
+        usageDuration: usageDuration,
+        launchCount: launchCount,
         lastUsed: data['lastUsed'] != null 
             ? DateTime.fromMillisecondsSinceEpoch(data['lastUsed'])
             : DateTime.now(),
@@ -132,9 +197,13 @@ class RealDataCollectionService {
         riskScore: data['riskScore']?.toDouble(),
       );
       
-      print('✅ Real app usage uploaded to Firebase: ${data['appName']}');
+      print('✅ [App Tracking] App usage uploaded to Firebase successfully!');
+      print('✅ [App Tracking] Firebase path: parents/$parentId/children/$childId/appUsage');
+      print('✅ [App Tracking] Parent side should now see this app usage');
+      print('');
     } catch (e) {
-      print('❌ Error uploading real app usage: $e');
+      print('❌ [App Tracking] Error uploading app usage: $e');
+      print('❌ [App Tracking] Stack trace: ${StackTrace.current}');
     }
   }
 
@@ -145,21 +214,47 @@ class RealDataCollectionService {
     String parentId,
   ) async {
     try {
-      print('🚀 Real app launched: ${data['appName']}');
+      final appName = data['appName'] ?? 'Unknown App';
+      final packageName = data['packageName'] ?? 'Unknown';
+      final usageDuration = data['usageDuration'] ?? 0;
+      final launchCount = data['launchCount'] ?? 1; // Default to 1 if not provided
       
-      await _appService.updateAppUsageInFirebase(
+      print('');
+      print('🚀 ========== 🚀 APP LAUNCHED - CHILD SIDE 🚀 ==========');
+      print('🚀 App Name: $appName');
+      print('🚀 Package: $packageName');
+      print('🚀 Usage Duration: $usageDuration minutes');
+      print('🚀 Launch Count: $launchCount');
+      print('🚀 Child ID: $childId');
+      print('🚀 Parent ID: $parentId');
+      print('🚀 Timestamp: ${DateTime.now()}');
+      print('🚀 ====================================================');
+      
+      // Use uploadAppUsageToFirebase instead of updateAppUsageInFirebase
+      // This will create a new document if it doesn't exist, or update if it does
+      await _appService.uploadAppUsageToFirebase(
+        packageName: packageName,
+        appName: appName,
+        usageDuration: usageDuration,
+        launchCount: launchCount,
+        lastUsed: data['lastUsed'] != null 
+            ? DateTime.fromMillisecondsSinceEpoch(data['lastUsed'])
+            : DateTime.now(),
         childId: childId,
         parentId: parentId,
-        appId: data['appId'] ?? '',
-        usageDuration: data['usageDuration'] ?? 0,
-        launchCount: data['launchCount'] ?? 0,
-        lastUsed: DateTime.now(),
+        appIcon: data['appIcon'],
+        metadata: data['metadata'] != null ? Map<String, dynamic>.from(data['metadata']) : null,
+        isSystemApp: data['isSystemApp'] ?? false,
         riskScore: data['riskScore']?.toDouble(),
       );
       
-      print('✅ Real app launch updated in Firebase: ${data['appName']}');
+      print('✅ [App Tracking] App launch uploaded to Firebase successfully!');
+      print('✅ [App Tracking] Firebase path: parents/$parentId/children/$childId/appUsage');
+      print('✅ [App Tracking] Parent side should now see this app launch');
+      print('');
     } catch (e) {
-      print('❌ Error updating real app launch: $e');
+      print('❌ [App Tracking] Error uploading app launch: $e');
+      print('❌ [App Tracking] Stack trace: ${StackTrace.current}');
     }
   }
 

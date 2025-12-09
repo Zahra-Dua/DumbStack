@@ -65,13 +65,27 @@ class ChildLocationService {
       _isTracking = true;
 
       // Request location permission
+      print('📍 [ChildLocation] Checking location permission...');
       final permission = await Geolocator.checkPermission();
+      print('📍 [ChildLocation] Current permission status: $permission');
+      
       if (permission == LocationPermission.denied) {
+        print('📍 [ChildLocation] Permission denied, requesting...');
         final newPermission = await Geolocator.requestPermission();
-        if (newPermission == LocationPermission.denied) {
+        print('📍 [ChildLocation] Permission request result: $newPermission');
+        if (newPermission == LocationPermission.denied || newPermission == LocationPermission.deniedForever) {
+          print('❌ [ChildLocation] Location permission denied or denied forever');
           throw Exception('Location permission denied');
         }
       }
+      
+      // Check if location services are enabled
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        print('❌ [ChildLocation] Location services are disabled');
+        throw Exception('Location services are disabled. Please enable location in device settings.');
+      }
+      print('✅ [ChildLocation] Location services enabled');
 
       // Enable location services
       await _locationDataSource.enableLocationTracking(
@@ -166,32 +180,49 @@ class ChildLocationService {
       );
 
       // Get battery level
-      final batteryLevel = await _battery.batteryLevel;
+      int batteryLevel = 0;
+      try {
+        batteryLevel = await _battery.batteryLevel;
+        print('🔋 [ChildLocation] Battery level retrieved: $batteryLevel%');
+      } catch (e) {
+        print('⚠️ [ChildLocation] Error getting battery level: $e');
+      }
       
       // Update location in Firebase (also includes battery)
       print('📍 [ChildLocation] Updating location to Firebase...');
       print('📍 [ChildLocation] ParentId: $_parentId, ChildId: $_childId');
+      print('📍 [ChildLocation] Location: ${position.latitude}, ${position.longitude}');
+      print('📍 [ChildLocation] Address: ${location.address}');
+      
       await _locationDataSource.updateChildLocation(
         parentId: _parentId!,
         childId: _childId!,
         location: location,
       );
       
+      print('✅ [ChildLocation] Location updated in Firebase');
+      
       // Update battery level in child document
-      await _firestore
-          .collection('parents')
-          .doc(_parentId!)
-          .collection('children')
-          .doc(_childId!)
-          .update({
-        'batteryLevel': batteryLevel,
-        'batteryUpdatedAt': FieldValue.serverTimestamp(),
-      });
+      try {
+        await _firestore
+            .collection('parents')
+            .doc(_parentId!)
+            .collection('children')
+            .doc(_childId!)
+            .update({
+          'batteryLevel': batteryLevel,
+          'batteryUpdatedAt': FieldValue.serverTimestamp(),
+        });
+        print('✅ [ChildLocation] Battery level updated: $batteryLevel%');
+      } catch (e) {
+        print('❌ [ChildLocation] Error updating battery level: $e');
+      }
 
       print('✅ [ChildLocation] Location updated: ${position.latitude}, ${position.longitude}');
       print('🔋 [ChildLocation] Battery level: $batteryLevel%');
     } catch (e) {
-      print('Error updating location: $e');
+      print('❌ [ChildLocation] Error updating location: $e');
+      print('   Stack trace: ${e.toString()}');
     }
   }
 

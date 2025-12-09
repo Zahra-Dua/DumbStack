@@ -23,13 +23,22 @@ class CallLogRemoteDataSourceImpl {
       return;
     }
 
-    print('🚀 [CallMonitor] Starting REAL-TIME call log monitoring (every 10 seconds)...');
+    print('');
+    print('📞 ========== 📞 STARTING CALL LOG MONITORING 📞 ==========');
+    print('📞 [CallMonitor] Starting REAL-TIME call log monitoring (every 10 seconds)...');
+    print('📞 [CallMonitor] Parent ID: $parentId');
+    print('📞 [CallMonitor] Child ID: $childId');
     print('📞 [CallMonitor] New calls will be detected within 10 seconds');
+    print('📞 [CallMonitor] Firebase path: parents/$parentId/children/$childId/call_logs');
+    print('📞 ====================================================');
+    print('');
     _isRunning = true;
 
     // Run immediately once, then every 10 seconds (almost real-time)
+    print('📞 [CallMonitor] Running first check immediately...');
     monitorChildCallLogs(parentId: parentId, childId: childId);
     _monitorTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      print('📞 [CallMonitor] Periodic check (every 10 seconds)...');
       monitorChildCallLogs(parentId: parentId, childId: childId);
     });
   }
@@ -79,23 +88,27 @@ class CallLogRemoteDataSourceImpl {
       // ✅ Fetch call logs with error handling first
       List<CallLogEntry> callLogList = [];
       try {
-        print('📞 [CallLogRemote] Attempting to fetch call logs...');
+        print('📞 [CallLogRemote] Attempting to fetch call logs from device...');
         final Iterable<CallLogEntry> callLogs = await CallLog.get();
         // OPTIMIZATION: Sort by timestamp (newest first) for early exit
         callLogList = callLogs.toList()
           ..sort((a, b) => (b.timestamp ?? 0).compareTo(a.timestamp ?? 0));
-        print('📞 [CallLogRemote] Total call logs fetched: ${callLogList.length} (sorted newest first)');
+        print('📞 [CallLogRemote] ✅ Total call logs fetched: ${callLogList.length} (sorted newest first)');
         
         if (callLogList.isEmpty) {
           print('⚠️ [CallLogRemote] No call logs found. This could be due to:');
           print('   1. No call history on device');
           print('   2. Missing READ_CALL_LOG permission');
           print('   3. Device restrictions');
+          print('⚠️ [CallLogRemote] Please check if READ_CALL_LOG permission is granted');
+        } else {
+          print('📞 [CallLogRemote] Found ${callLogList.length} call logs on device');
         }
       } catch (e) {
         print('❌ [CallLogRemote] Error fetching call logs: $e');
         print('🔍 [CallLogRemote] This might be due to missing permissions or no call logs');
         print('🔍 [CallLogRemote] Make sure READ_CALL_LOG permission is granted');
+        print('🔍 [CallLogRemote] Stack trace: ${StackTrace.current}');
         return;
       }
 
@@ -316,9 +329,15 @@ class CallLogRemoteDataSourceImpl {
   /// 📤 Upload call log to Firebase
   Future<void> _uploadCallLog(CallLogModel callLog) async {
     try {
+      print('');
+      print('📞 ========== 📞 UPLOADING CALL LOG 📞 ==========');
       print('📤 [CallLogRemote] Uploading call log to Firebase...');
       print('📤 [CallLogRemote] Path: parents/${callLog.parentId}/children/${callLog.childId}/call_logs');
-      print('📤 [CallLogRemote] Call: ${callLog.number} - ${callLog.callTypeString}');
+      print('📤 [CallLogRemote] Number: ${callLog.number}');
+      print('📤 [CallLogRemote] Name: ${callLog.name ?? 'Unknown'}');
+      print('📤 [CallLogRemote] Type: ${callLog.callTypeString}');
+      print('📤 [CallLogRemote] Duration: ${callLog.duration} seconds');
+      print('📤 [CallLogRemote] Date: ${callLog.dateTime}');
       
       final docRef = await firestore
           .collection('parents')
@@ -328,9 +347,14 @@ class CallLogRemoteDataSourceImpl {
           .collection('call_logs')
           .add(callLog.toMap());
       
-      print('✅ [CallLogRemote] Call log uploaded successfully with ID: ${docRef.id}');
+      print('✅ [CallLogRemote] Call log uploaded successfully!');
+      print('✅ [CallLogRemote] Document ID: ${docRef.id}');
+      print('✅ [CallLogRemote] Parent side should now see this call');
+      print('📞 ==============================================');
+      print('');
     } catch (e) {
       print('❌ [CallLogRemote] Error uploading call log: $e');
+      print('❌ [CallLogRemote] Stack trace: ${StackTrace.current}');
     }
   }
 

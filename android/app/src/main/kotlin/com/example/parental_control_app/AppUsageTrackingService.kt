@@ -54,13 +54,20 @@ class AppUsageTrackingService : Service() {
         
         // Method channel for Flutter communication
         private var methodChannel: MethodChannel? = null
+        private var childTrackingChannel: MethodChannel? = null
         
         fun setMethodChannel(channel: MethodChannel) {
             methodChannel = channel
-            Log.d(TAG, "Method channel set from MainActivity")
+            Log.d(TAG, "✅ [Native] App usage method channel set from MainActivity")
+        }
+        
+        fun setChildTrackingChannel(channel: MethodChannel) {
+            childTrackingChannel = channel
+            Log.d(TAG, "✅ [Native] Child tracking channel set for app usage events")
         }
         
         fun getMethodChannel(): MethodChannel? = methodChannel
+        fun getChildTrackingChannel(): MethodChannel? = childTrackingChannel
     }
     
     data class AppUsageData(
@@ -145,11 +152,16 @@ class AppUsageTrackingService : Service() {
     
     private fun startTracking() {
         if (runnable != null) {
-            Log.w(TAG, "Tracking already started")
+            Log.w(TAG, "⚠️ [Native] Tracking already started")
             return
         }
         
-        Log.d(TAG, "Starting real-time app usage tracking")
+        Log.d(TAG, "")
+        Log.d(TAG, "📱 ========== 📱 STARTING APP USAGE TRACKING 📱 ==========")
+        Log.d(TAG, "📱 Service: AppUsageTrackingService")
+        Log.d(TAG, "📱 Check Interval: ${CHECK_INTERVAL_MS}ms (every 2 seconds)")
+        Log.d(TAG, "📱 Sync Interval: ${SYNC_INTERVAL_MS}ms (every 30 seconds)")
+        Log.d(TAG, "📱 ====================================================")
         
         runnable = object : Runnable {
             override fun run() {
@@ -157,7 +169,7 @@ class AppUsageTrackingService : Service() {
                     checkForegroundApp()
                     checkSyncToFlutter()
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error in tracking loop: ${e.message}")
+                    Log.e(TAG, "❌ [Native] Error in tracking loop: ${e.message}")
                 } finally {
                     handler?.postDelayed(this, CHECK_INTERVAL_MS)
                 }
@@ -165,6 +177,9 @@ class AppUsageTrackingService : Service() {
         }
         
         handler?.post(runnable!!)
+        Log.d(TAG, "✅ [Native] App usage tracking started successfully")
+        Log.d(TAG, "✅ [Native] Now monitoring all app launches and usage")
+        Log.d(TAG, "")
     }
     
     private fun stopTracking() {
@@ -268,6 +283,13 @@ class AppUsageTrackingService : Service() {
             val appName = getAppName(packageName)
             val isSystemApp = isSystemApp(packageName)
             
+            Log.d(TAG, "")
+            Log.d(TAG, "📱 ========== 📱 APP OPENED - NATIVE SIDE 📱 ==========")
+            Log.d(TAG, "📱 App Name: $appName")
+            Log.d(TAG, "📱 Package: $packageName")
+            Log.d(TAG, "📱 Is System App: $isSystemApp")
+            Log.d(TAG, "📱 ====================================================")
+            
             val data = mapOf(
                 "packageName" to packageName,
                 "appName" to appName,
@@ -275,10 +297,32 @@ class AppUsageTrackingService : Service() {
                 "timestamp" to System.currentTimeMillis()
             )
             
+            // Send to app_usage_tracking_service channel (for RealTimeAppUsageService)
             AppUsageTrackingService.getMethodChannel()?.invokeMethod("onAppChanged", data)
-            Log.d(TAG, "Notified Flutter: App changed to $appName")
+            Log.d(TAG, "✅ [Native] Sent app change to app_usage_tracking_service channel: $appName")
+            
+            // Also send to child_tracking channel (for RealDataCollectionService)
+            val childTrackingData = mapOf(
+                "packageName" to packageName,
+                "appName" to appName,
+                "usageDuration" to 0,
+                "launchCount" to 1,
+                "lastUsed" to System.currentTimeMillis(),
+                "isSystemApp" to isSystemApp
+            )
+            
+            Handler(Looper.getMainLooper()).post {
+                try {
+                    AppUsageTrackingService.getChildTrackingChannel()?.invokeMethod("onAppLaunched", childTrackingData)
+                    Log.d(TAG, "✅ [Native] Sent app launch to child_tracking channel: $appName")
+                    Log.d(TAG, "✅ [Native] Flutter should receive this app launch now")
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ [Native] Error sending app launch to child_tracking: ${e.message}")
+                }
+            }
+            Log.d(TAG, "")
         } catch (e: Exception) {
-            Log.e(TAG, "Error notifying app change: ${e.message}")
+            Log.e(TAG, "❌ [Native] Error notifying app change: ${e.message}")
         }
     }
     
@@ -327,10 +371,31 @@ class AppUsageTrackingService : Service() {
                 "timestamp" to System.currentTimeMillis()
             )
             
+            // Send to app_usage_tracking_service channel
             AppUsageTrackingService.getMethodChannel()?.invokeMethod("onUsageStatsUpdated", syncData)
-            Log.d(TAG, "Synced ${appUsageList.size} apps to Flutter (Total screen time: ${totalScreenTime}min)")
+            Log.d(TAG, "✅ [Native] Synced ${appUsageList.size} apps to app_usage_tracking_service channel (Total screen time: ${totalScreenTime}min)")
+            
+            // Also send each app usage to child_tracking channel for Firebase upload
+            Handler(Looper.getMainLooper()).post {
+                for (appData in appUsageList) {
+                    try {
+                        val childTrackingData = mapOf(
+                            "packageName" to appData["packageName"],
+                            "appName" to appData["appName"],
+                            "usageDuration" to appData["usageDuration"],
+                            "launchCount" to appData["launchCount"],
+                            "lastUsed" to appData["lastUsed"],
+                            "isSystemApp" to appData["isSystemApp"]
+                        )
+                        AppUsageTrackingService.getChildTrackingChannel()?.invokeMethod("onAppUsageUpdated", childTrackingData)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ [Native] Error sending app usage to child_tracking: ${e.message}")
+                    }
+                }
+                Log.d(TAG, "✅ [Native] Sent ${appUsageList.size} app usage updates to child_tracking channel")
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Error syncing to Flutter: ${e.message}")
+            Log.e(TAG, "❌ [Native] Error syncing to Flutter: ${e.message}")
         }
     }
     

@@ -156,7 +156,13 @@ class RealTimeAppUsageService {
       
       if (packageName == null) return;
       
-      print('📱 [RealTimeAppUsageService] App changed: $appName ($packageName)');
+      print('');
+      print('📱 ========== 📱 APP OPENED - CHILD SIDE 📱 ==========');
+      print('📱 App Name: ${appName ?? packageName}');
+      print('📱 Package: $packageName');
+      print('📱 Is System App: $isSystemApp');
+      print('📱 Timestamp: ${DateTime.now()}');
+      print('📱 ====================================================');
       
       // Update app usage map
       _appUsageMap.putIfAbsent(packageName, () => AppUsageData(
@@ -169,12 +175,16 @@ class RealTimeAppUsageService {
       _appUsageMap[packageName]!.launchCount++;
       _appUsageMap[packageName]!.lastUsed = DateTime.now();
       
+      print('📱 [App Tracking] App opened: ${appName ?? packageName}');
+      print('📱 [App Tracking] Launch count: ${_appUsageMap[packageName]!.launchCount}');
+      print('');
+      
       // CRITICAL: Check app limit immediately when app changes
-      print('🔒 [RealTimeAppUsageService] Checking app limit for: $packageName');
+      print('🔒 [App Tracking] Checking app limit for: $packageName');
       await _usageStatsService.checkAppRestrictionImmediately(packageName);
       
     } catch (e) {
-      print('❌ [RealTimeAppUsageService] Error handling app changed: $e');
+      print('❌ [App Tracking] Error handling app changed: $e');
     }
   }
   
@@ -186,7 +196,23 @@ class RealTimeAppUsageService {
       
       if (appUsageList == null) return;
       
-      print('📊 [RealTimeAppUsageService] Usage stats updated: ${appUsageList.length} apps, ${totalScreenTime}min total');
+      print('');
+      print('📊 ========== 📊 APP USAGE STATS UPDATE 📊 ==========');
+      print('📊 Total Apps: ${appUsageList.length}');
+      print('📊 Total Screen Time: ${totalScreenTime} minutes');
+      print('📊 Timestamp: ${DateTime.now()}');
+      print('📊 =================================================');
+      
+      // Log each app being used
+      for (var appData in appUsageList) {
+        final packageName = appData['packageName'] as String?;
+        final appName = appData['appName'] as String?;
+        final usageDuration = appData['usageDuration'] as int? ?? 0;
+        if (packageName != null && appName != null) {
+          print('📱   - $appName: ${usageDuration} minutes');
+        }
+      }
+      print('');
       
       // Update local data
       _totalScreenTimeMinutes = totalScreenTime;

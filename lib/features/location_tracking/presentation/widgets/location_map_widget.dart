@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/media_query_helpers.dart';
 import '../../data/services/location_tracking_service.dart';
@@ -28,11 +30,61 @@ class _LocationMapWidgetState extends State<LocationMapWidget> {
   LocationModel? _currentLocation;
   Set<Marker> _markers = {};
   bool _isLoading = true;
+  StreamSubscription<DocumentSnapshot>? _locationSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadLocationData();
+    _listenToLocationUpdates();
+  }
+
+  @override
+  void dispose() {
+    _locationSubscription?.cancel();
+    super.dispose();
+  }
+
+  /// Listen to real-time location updates from Firebase
+  void _listenToLocationUpdates() {
+    _locationSubscription = FirebaseFirestore.instance
+        .collection('parents')
+        .doc(widget.parentId)
+        .collection('children')
+        .doc(widget.childId)
+        .collection('location')
+        .doc('current')
+        .snapshots()
+        .listen((DocumentSnapshot snapshot) {
+      if (snapshot.exists && snapshot.data() != null) {
+        try {
+          final location = LocationModel.fromMap(snapshot.data() as Map<String, dynamic>);
+          setState(() {
+            _currentLocation = location;
+            _markers = {
+              Marker(
+                markerId: MarkerId(widget.childId),
+                position: LatLng(location.latitude, location.longitude),
+                infoWindow: InfoWindow(
+                  title: widget.childName,
+                  snippet: location.address,
+                ),
+              ),
+            };
+          });
+
+          // Move camera to new location
+          _mapController?.animateCamera(
+            CameraUpdate.newLatLngZoom(
+              LatLng(location.latitude, location.longitude),
+              15.0,
+            ),
+          );
+        } catch (e) {
+          print('Error parsing location update: $e');
+        }
+      }
+    });
   }
 
   Future<void> _loadLocationData() async {
@@ -74,9 +126,7 @@ class _LocationMapWidgetState extends State<LocationMapWidget> {
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading location: $e')),
-      );
+      print('Error loading location: $e');
     }
   }
 
