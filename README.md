@@ -246,241 +246,26 @@ venv\Scripts\activate
 source venv/bin/activate
 
 # Install dependencies
+- Python Backend
 pip install -r requirements.txt
-4. Firebase Configuration
+- Firebase Configuration
 Follow the setup guide in SECRETS_SETUP.md:
 bash# Add Firebase config files
 android/app/google-services.json      # Android only
-5. API Keys Configuration
+- API Keys Configuration
 Create .env file in project root:
 env# OpenAI Configuration
 OPENAI_API_KEY=your_gpt4_mini_api_key_here
 OPENAI_MODEL=gpt-4-mini
 
-# Google Safe Browsing API
+- Google Safe Browsing API
 SAFE_BROWSING_API_KEY=your_safe_browsing_api_key_here
 
-# Firebase
+- Firebase
 FCM_SERVER_KEY=your_fcm_server_key_here
 
-# Google Maps
+- Google Maps
 GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
-6. Deploy Cloud Functions
-See CLOUD_FUNCTION_DEPLOYMENT_GUIDE.md:
-bashcd functions
-npm install
-firebase login
-firebase deploy --only functions
-7. Run Python Backend
-bashcd backend
-python app.py
 
-# Backend will run on http://localhost:5000
-8. Run Flutter App
-bash# Run on connected Android device
-flutter run
 
-# Or specify Android device
-flutter run -d android
-🔧 Configuration
-1. Android Manifest Permissions
-android/app/src/main/AndroidManifest.xml:
-xml<manifest>
-    <!-- Location permissions -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
-    
-    <!-- Communication monitoring -->
-    <uses-permission android:name="android.permission.READ_CALL_LOG"/>
-    <uses-permission android:name="android.permission.READ_SMS"/>
-    <uses-permission android:name="android.permission.READ_CONTACTS"/>
-    
-    <!-- Network -->
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-    
-    <!-- Services -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    
-    <!-- Usage stats -->
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
-        tools:ignore="ProtectedPermissions"/>
-</manifest>
-2. Firestore Security Rules
-firestore.rules:
-javascriptrules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    match /locations/{locationId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-    
-    match /activities/{activityId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
-    }
-    
-    match /reports/{reportId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-    }
-  }
-}
-3. Python Backend Configuration
-backend/config.py:
-pythonimport os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-class Config:
-    OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-    OPENAI_MODEL = 'gpt-4-mini'
-    SAFE_BROWSING_API_KEY = os.getenv('SAFE_BROWSING_API_KEY')
-    FLASK_PORT = 5000
-    DEBUG = True
-4. API Service Setup
-lib/services/ai_service.dart:
-dartclass AIService {
-  static const String apiUrl = 'http://localhost:5000';
-  static const String openAIModel = 'gpt-4-mini';
-  
-  Future<AIInsights> getRecommendations(UserActivity activity) async {
-    // Implementation
-  }
-}
-📱 Running the Complete System
-Step-by-Step Startup Guide
-1. Start Python Backend (Terminal 1)
-bashcd backend
-conda activate safenest  # or: source venv/bin/activate
-python app.py
-2. Start Firebase Emulators (Terminal 2) - Optional for testing
-bashfirebase emulators:start
-3. Run Flutter App (Terminal 3)
-bashflutter run
-4. Verify All Services
-
-Backend: http://localhost:5000/health
-Firebase Console: Check real-time updates
-App: Test authentication and features
-
-🧪 Testing
-Unit Tests
-bashflutter test
-Integration Tests
-bashflutter test integration_test/
-Backend Tests
-bashcd backend
-python -m pytest tests/
-Harassment Detection Tests
-bashcd backend
-python test_harassment_detection.py
-API Tests
-bash# Test GPT-4 Mini integration
-curl -X POST http://localhost:5000/api/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"text": "sample message"}'
-
-# Test Safe Browsing API
-curl -X POST http://localhost:5000/api/check-url \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com"}'
-📊 Implementation Status
-✅ Completed Modules
-
- Module 1: Authentication & User Management (100%)
- Module 2: URL Tracking & Web Monitoring (100%)
- Module 3: Screen Time Management (100%)
- Module 4: Location Tracking (100%)
- Module 5: Communication Monitoring (100%)
- Module 6: Activity Logs & Reports (100%)
- Module 7: AI Recommendations & Insights (100%)
- Module 8: SOS & Emergency Alerts (100%)
- Android Native Integration (100%)
- Firebase Cloud Functions Integration (100%)
- GPT-4 Mini Integration (100%)
- Google Safe Browsing API Integration (100%)
-
-🔒 Security & Privacy
-
-End-to-end encryption for sensitive data
-Secure authentication with Firebase
-Privacy-compliant data handling (COPPA, GDPR)
-Role-based access control
-Secure API communications
-API key management with environment variables
-Regular security audits
-Data anonymization for AI processing
-Parental consent mechanisms
-
-📋 Required Dependencies
-Flutter (pubspec.yaml)
-yamldependencies:
-  flutter:
-    sdk: flutter
-  firebase_core: ^2.24.2
-  firebase_auth: ^4.15.3
-  cloud_firestore: ^4.13.6
-  firebase_messaging: ^14.7.9
-  geolocator: ^10.1.0
-  google_maps_flutter: ^2.5.0
-  http: ^1.1.0
-  provider: ^6.1.1
-  shared_preferences: ^2.2.2
-  permission_handler: ^11.0.1
-  url_launcher: ^6.2.1
-  intl: ^0.18.1
-  fl_chart: ^0.65.0
-Python (requirements.txt)
-txtflask==3.0.0
-flask-cors==4.0.0
-openai==1.3.0
-tensorflow==2.15.0
-scikit-learn==1.3.2
-pandas==2.1.3
-numpy==1.24.3
-python-dotenv==1.0.0
-requests==2.31.0
-Node.js (package.json)
-json{
-  "dependencies": {
-    "firebase-admin": "^12.0.0",
-    "firebase-functions": "^4.5.0"
-  }
-}
-🐛 Troubleshooting
-Common Issues
-1. Python Backend Not Starting
-bash# Check Python version
-python --version
-
-# Reinstall dependencies
-pip install -r requirements.txt --force-reinstall
-
-# Check port availability
-netstat -ano | findstr :5000  # Windows
-lsof -i :5000  # Linux/Mac
-2. GPT-4 Mini API Errors
-
-Verify API key in .env file
-Check OpenAI account credits
-Ensure correct model name: gpt-4-mini
-
-3. Safe Browsing API Issues
-
-Enable Safe Browsing API in Google Cloud Console
-Check API key permissions
-Verify quota limits
-
-4. Flask CORS Errors
-bashpip install flask-cors
-# Update app.py with CORS configuration
 
