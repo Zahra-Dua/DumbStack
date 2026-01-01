@@ -1,7 +1,9 @@
 🛡️ SafeNest - Parental Control App
 📋 Overview
 SafeNest is a comprehensive parental control application built with Flutter that helps parents monitor and ensure their children's safety in the digital age. The app provides real-time tracking, content monitoring, SOS alerts, AI-powered insights, and intelligent harassment detection capabilities. With advanced machine learning integration and multi-layered protection, SafeNest offers complete digital safety for children.
+
 ✨ Key Features
+
 🔐 Module 1: Authentication & User Management
 
 Secure Authentication: Email/password and phone number authentication
@@ -266,6 +268,7 @@ FCM_SERVER_KEY=your_fcm_server_key_here
 
 - Google Maps
 GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+
 
 
 
